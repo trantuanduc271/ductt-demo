@@ -1,0 +1,273 @@
+pipeline {
+    agent {
+        kubernetes {
+            yaml '''
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    jenkins: agent
+spec:
+  serviceAccountName: jenkins
+  containers:
+  - name: maven
+    image: maven:3.9.9-eclipse-temurin-21
+    command:
+    - cat
+    tty: true
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:debug
+    command:
+    - /busybox/cat
+    tty: true
+    volumeMounts:
+    - name: kaniko-secret
+      mountPath: /secret
+    env:
+    - name: GOOGLE_APPLICATION_CREDENTIALS
+      value: /secret/kaniko-sa-key.json
+  - name: kubectl
+    image: beli/kubectl-shell:latest
+    command:
+    - cat
+    tty: true
+  volumes:
+  - name: kaniko-secret
+    secret:
+      secretName: kaniko-secret
+'''
+        }
+    }
+    
+    environment {
+        GCP_PROJECT = 'shared-services-445608'
+        GCP_REGION = 'us-central1'
+        IMAGE_REPO = "${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT}/my-java-app"
+        IMAGE_NAME = 'my-app'
+        // Use tag name if available, otherwise use build number
+        IMAGE_TAG = "${env.TAG_NAME ?: BUILD_NUMBER}"
+        FULL_IMAGE = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_TAG}"
+        APP_DOMAIN = 'app.ducttdevops.com'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    checkout scm
+                    env.IS_PR = env.CHANGE_ID ? 'true' : 'false'
+                    env.IS_TAG = env.TAG_NAME ? 'true' : 'false'
+                    
+                    // Determine build type
+                    if (env.CHANGE_ID) {
+                        env.BUILD_TYPE = 'Pull Request'
+                    } else if (env.TAG_NAME) {
+                        env.BUILD_TYPE = 'Tag'
+                    } else {
+                        env.BUILD_TYPE = 'Push'
+                    }
+                    
+                    if (env.CHANGE_ID) {
+                        echo "Checkout: Pull Request #${env.CHANGE_ID} (${env.BRANCH_NAME} -> ${env.CHANGE_TARGET})"
+                    } else if (env.TAG_NAME) {
+                        echo "Checkout: Tag ${env.TAG_NAME} (Image: ${FULL_IMAGE})"
+                    } else {
+                        echo "Checkout: Branch ${env.BRANCH_NAME}"
+                    }
+                }
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                container('maven') {
+                    echo 'Building application...'
+                    sh 'mvn --version'
+                    sh 'mvn clean compile'
+                }
+            }
+        }
+        
+        stage('Validation') {
+            parallel {
+                stage('Test') {
+                    steps {
+                        container('maven') {
+                            echo 'Running tests...'
+                            sh 'mvn test'
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+                
+                stage('Package') {
+                    steps {
+                        container('maven') {
+                            echo 'Packaging application...'
+                            sh 'mvn package -DskipTests'
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Build & Push Docker Image') {
+            when {
+                allOf {
+                    expression { return env.CHANGE_ID == null }
+                    anyOf {
+                        branch 'main'
+                        branch 'master'
+                        branch 'develop'
+                        expression { return env.TAG_NAME != null }
+                    }
+                }
+            }
+            steps {
+                container('kaniko') {
+                    echo "Building and pushing Docker image: ${FULL_IMAGE}"
+                    sh """
+                        /kaniko/executor \
+                            --context=\${WORKSPACE} \
+                            --dockerfile=\${WORKSPACE}/Dockerfile \
+                            --destination=${FULL_IMAGE} \
+                            --destination=${IMAGE_REPO}/${IMAGE_NAME}:latest \
+                            --cache=true \
+                            --cache-ttl=24h
+                    """
+                }
+            }
+        }
+        
+        stage('Approve Deployment') {
+            when {
+                allOf {
+                    expression { return env.CHANGE_ID == null }
+                    expression { return env.TAG_NAME != null }
+                }
+            }
+            steps {
+                script {
+                    def deployMessage = """
+                    DEPLOYMENT APPROVAL REQUIRED
+                    Tag: ${env.TAG_NAME}
+                    Image: ${FULL_IMAGE}
+                    Target: Kubernetes (${APP_DOMAIN})
+                    Please review and approve this deployment.
+                    """
+                    
+                    def approvalResult = input(
+                        id: 'deploymentApproval',
+                        message: deployMessage,
+                        ok: 'Approve Deployment',
+                        submitterParameter: 'approvedBy',
+                        parameters: [
+                            choice(
+                                name: 'action',
+                                choices: ['Deploy', 'Skip'],
+                                description: 'Choose deployment action'
+                            )
+                        ]
+                    )
+                    
+                    if (approvalResult == 'Skip') {
+                        currentBuild.result = 'ABORTED'
+                        error("Deployment was skipped by ${env.approvedBy}")
+                    }
+                    
+                    echo "Deployment approved by ${env.approvedBy}: ${approvalResult}"
+                }
+            }
+        }
+        
+        stage('Deploy to Kubernetes') {
+            when {
+                allOf {
+                    expression { return env.CHANGE_ID == null }
+                    anyOf {
+                        branch 'main'
+                        branch 'master'
+                        branch 'develop'
+                        expression { return env.TAG_NAME != null }
+                    }
+                }
+            }
+            steps {
+                container('kubectl') {
+                    echo "Deploying to Kubernetes with image: ${FULL_IMAGE}"
+                    script {
+                        def deploymentYaml = readFile('k8s-deployment.yaml')
+                        deploymentYaml = deploymentYaml.replace('IMAGE_URL_PLACEHOLDER', env.FULL_IMAGE)
+                        writeFile file: 'k8s-deployment-updated.yaml', text: deploymentYaml
+                    }
+                    sh """
+                        kubectl apply -f k8s-deployment-updated.yaml
+                        
+                        kubectl rollout status deployment/my-java-app -n default --timeout=5m
+                        
+                        echo "===== Deployment Status ====="
+                        kubectl get deployment my-java-app -n default
+                        kubectl get pods -l app=my-java-app -n default
+                        kubectl get svc my-java-app -n default
+                        kubectl get ingress my-java-app -n default
+                    """
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            script {
+                if (env.CHANGE_ID) {
+                    echo "Pull Request #${env.CHANGE_ID} validation successful - CI pipeline will run after merge"
+                } else {
+                    def isDeployableBranch = env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop'
+                    def isTagBuild = env.TAG_NAME != null
+                    
+                    if (isTagBuild) {
+                        echo "Tag ${env.TAG_NAME} build and deployment successful - Image: ${FULL_IMAGE} - URL: https://${APP_DOMAIN}"
+                    } else if (isDeployableBranch) {
+                        echo "Branch ${env.BRANCH_NAME} validation and deployment successful - Image: ${FULL_IMAGE} - URL: https://${APP_DOMAIN}"
+                    } else {
+                        echo "Branch ${env.BRANCH_NAME} validation successful - CI pipeline skipped for this branch"
+                    }
+                }
+            }
+        }
+        failure {
+            script {
+                if (env.CHANGE_ID) {
+                    echo "Pull Request #${env.CHANGE_ID} validation failed - CI pipeline will not run"
+                } else {
+                    def validationFailed = currentBuild.result == 'FAILURE'
+                    if (validationFailed && currentBuild.stageName?.contains('Validation')) {
+                        echo "Branch ${env.BRANCH_NAME} validation failed - CI pipeline was not executed"
+                    } else {
+                        echo "Branch ${env.BRANCH_NAME} CI pipeline failed (Docker build or Deploy)"
+                    }
+                }
+            }
+        }
+        always {
+            script {
+                try {
+                    archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
+                } catch (Exception e) {
+                    echo "Could not archive artifacts: ${e.message}"
+                }
+            }
+        }
+    }
+}
