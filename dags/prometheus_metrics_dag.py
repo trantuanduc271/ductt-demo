@@ -14,27 +14,42 @@ default_args = {
     'retry_delay': timedelta(minutes=2),
 }
 
-# Pushgateway URL (Kubernetes service)
 PUSHGATEWAY_URL = "http://pushgateway-prometheus-pushgateway.airflow-3.svc.cluster.local:9091"
 
-def push_metrics(job_name, metrics_dict):
-    """Push metrics to Pushgateway"""
+def push_metrics(job_name, metrics_dict, instance="airflow"):
+    """Push metrics to Pushgateway with proper format"""
+    
+    # Build metrics in Prometheus exposition format
     metrics_lines = []
     
     for metric_name, metric_value in metrics_dict.items():
-        # Format: metric_name value
+        # Add TYPE and HELP (optional but recommended)
+        metrics_lines.append(f"# TYPE {metric_name} gauge")
+        metrics_lines.append(f"# HELP {metric_name} {metric_name.replace('_', ' ')}")
+        # Add the actual metric
         metrics_lines.append(f"{metric_name} {metric_value}")
     
-    metrics_data = "\n".join(metrics_lines)
-    url = f"{PUSHGATEWAY_URL}/metrics/job/{job_name}"
+    # Join with newlines and add final newline
+    metrics_data = "\n".join(metrics_lines) + "\n"
+    
+    # Build URL with job and instance labels
+    url = f"{PUSHGATEWAY_URL}/metrics/job/{job_name}/instance/{instance}"
+    
+    # Set proper headers
+    headers = {
+        'Content-Type': 'text/plain; charset=utf-8'
+    }
     
     try:
-        response = requests.post(url, data=metrics_data)
+        response = requests.post(url, data=metrics_data, headers=headers)
         response.raise_for_status()
-        print(f"✅ Successfully pushed metrics to {url}")
-        print(f"📊 Metrics: {metrics_dict}")
-    except Exception as e:
+        print(f"✅ Successfully pushed metrics to Pushgateway")
+        print(f"📊 Job: {job_name}, Instance: {instance}")
+        print(f"📈 Metrics: {list(metrics_dict.keys())}")
+    except requests.exceptions.RequestException as e:
         print(f"❌ Failed to push metrics: {e}")
+        if hasattr(e.response, 'text'):
+            print(f"Response: {e.response.text}")
         raise
 
 def data_processing_task(**context):
@@ -45,19 +60,15 @@ def data_processing_task(**context):
     
     start_time = time.time()
     
-    # Simulate processing work
     records_processed = random.randint(1000, 5000)
     records_failed = random.randint(0, 50)
     
     print(f"Processing {records_processed} records...")
     time.sleep(random.uniform(2, 5))
     
-    # Simulate occasional failures (10% chance)
-    success = random.random() > 0.1
-    
+    success = random.random() > 0.1  # 90% success rate
     duration = time.time() - start_time
     
-    # Prepare metrics for Pushgateway
     metrics = {
         'airflow_data_processing_duration_seconds': round(duration, 2),
         'airflow_data_processing_records_total': records_processed,
@@ -66,7 +77,6 @@ def data_processing_task(**context):
         'airflow_data_processing_last_run_timestamp': int(time.time()),
     }
     
-    # Push to Pushgateway
     push_metrics(job_name='data_processing_dag', metrics_dict=metrics)
     
     print(f"✅ Processed {records_processed} records in {duration:.2f}s")
@@ -85,25 +95,21 @@ def etl_pipeline_task(**context):
     
     start_time = time.time()
     
-    # Extract phase
-    print("📥 Extract phase...")
     extract_records = random.randint(5000, 10000)
+    print(f"📥 Extract: {extract_records} records")
     time.sleep(1)
     
-    # Transform phase
-    print("⚙️  Transform phase...")
     transform_records = int(extract_records * random.uniform(0.92, 0.98))
+    print(f"⚙️  Transform: {transform_records} records")
     time.sleep(1.5)
     
-    # Load phase
-    print("📤 Load phase...")
     load_records = transform_records
+    print(f"📤 Load: {load_records} records")
     time.sleep(1)
     
     duration = time.time() - start_time
     data_loss_percent = ((extract_records - load_records) / extract_records) * 100
     
-    # Prepare metrics
     metrics = {
         'airflow_etl_extract_records': extract_records,
         'airflow_etl_transform_records': transform_records,
@@ -113,13 +119,9 @@ def etl_pipeline_task(**context):
         'airflow_etl_last_run_timestamp': int(time.time()),
     }
     
-    # Push to Pushgateway
     push_metrics(job_name='etl_pipeline', metrics_dict=metrics)
     
-    print(f"✅ ETL Complete:")
-    print(f"   Extract: {extract_records}")
-    print(f"   Transform: {transform_records}")
-    print(f"   Load: {load_records}")
+    print(f"✅ ETL Complete: {load_records} records loaded")
     print(f"   Data Loss: {data_loss_percent:.2f}%")
     print(f"   Duration: {duration:.2f}s")
     
@@ -133,7 +135,6 @@ def report_generation_task(**context):
     
     start_time = time.time()
     
-    # Generate reports
     reports_generated = random.randint(5, 20)
     report_size_mb = random.randint(10, 100)
     
@@ -142,7 +143,6 @@ def report_generation_task(**context):
     
     duration = time.time() - start_time
     
-    # Prepare metrics
     metrics = {
         'airflow_reports_generated': reports_generated,
         'airflow_reports_size_mb': report_size_mb,
@@ -150,44 +150,38 @@ def report_generation_task(**context):
         'airflow_reports_last_run_timestamp': int(time.time()),
     }
     
-    # Push to Pushgateway
     push_metrics(job_name='report_generation', metrics_dict=metrics)
     
-    print(f"✅ Generated {reports_generated} reports ({report_size_mb}MB total)")
+    print(f"✅ Generated {reports_generated} reports ({report_size_mb}MB)")
     print(f"   Duration: {duration:.2f}s")
     
     return reports_generated
 
-# Define the DAG
 with DAG(
     'prometheus_metrics_demo',
     default_args=default_args,
     description='Demo DAG pushing metrics to Prometheus Pushgateway',
-    schedule_interval='*/5 * * * *',  # Every 5 minutes
+    schedule_interval='*/5 * * * *',
     catchup=False,
     tags=['monitoring', 'prometheus', 'demo'],
 ) as dag:
     
-    # Task 1: Data Processing
     task_data_processing = PythonOperator(
         task_id='data_processing',
         python_callable=data_processing_task,
         provide_context=True,
     )
     
-    # Task 2: ETL Pipeline
     task_etl = PythonOperator(
         task_id='etl_pipeline',
         python_callable=etl_pipeline_task,
         provide_context=True,
     )
     
-    # Task 3: Report Generation
     task_reports = PythonOperator(
         task_id='report_generation',
         python_callable=report_generation_task,
         provide_context=True,
     )
     
-    # Define task dependencies
     task_data_processing >> task_etl >> task_reports
