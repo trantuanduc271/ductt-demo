@@ -1,0 +1,26 @@
+# PodMonitor for NATS in Primary Cluster
+# Adds cluster and environment labels to all metrics
+
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: nats
+  namespace: nats
+  labels:
+    release: kube-prometheus-stack
+    app: nats
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nats
+      app.kubernetes.io/component: nats
+  podMetricsEndpoints:
+  - port: prom-metrics
+    interval: 15s
+    path: /metrics
+    # Add custom labels to all scraped metrics
+    relabelings:
+    - targetLabel: cluster
+      replacement: 'nats-primary'
+    - targetLabel: environment
+      replacement: 'production'

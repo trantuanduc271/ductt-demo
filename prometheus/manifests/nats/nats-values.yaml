@@ -1,0 +1,49 @@
+# NATS Helm Values for Primary Cluster
+# Namespace: nats
+# Purpose: Message broker with Prometheus monitoring
+
+nats:
+  # JetStream configuration
+  jetstream:
+    enabled: true
+    memoryStore:
+      enabled: true
+      size: 1Gi
+    fileStore:
+      enabled: true
+      size: 2Gi
+
+config:
+  # Enable JetStream
+  jetstream:
+    enabled: true
+  
+  # Enable HTTP monitoring endpoint
+  monitor:
+    enabled: true
+    port: 8222
+
+# Prometheus exporter sidecar
+promExporter:
+  enabled: true
+  port: 7777
+  image:
+    repository: natsio/prometheus-nats-exporter
+    tag: 0.17.3
+
+# PodMonitor for Prometheus Operator
+podMonitor:
+  enabled: true
+  merge:
+    metadata:
+      labels:
+        release: kube-prometheus-stack
+
+# Resource limits
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
