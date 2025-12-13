@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: nats
+  namespace: another-cluster
+  labels:
+    release: prometheus-agent-kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nats
+      app.kubernetes.io/component: nats
+  namespaceSelector:
+    matchNames:
+      - another-cluster
+  podMetricsEndpoints:
+    - targetPort: 7777
+      interval: 30s
+      path: /metrics
+      scheme: http

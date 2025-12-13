@@ -1,0 +1,66 @@
+# prometheus-agent-values.yaml
+# Lightweight Prometheus Agent for Remote Write
+
+# Use agent mode (no local storage, only forward)
+prometheus:
+  agentMode: true
+  
+  prometheusSpec:
+    # No persistent storage needed (agent mode)
+    storageSpec: {}
+    
+    # Resource limits
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    
+    # Remote write configuration
+    remoteWrite:
+      - url: http://prometheus-operated.monitoring.svc.cluster.local:9090/api/v1/write
+        # Write every 30 seconds
+        writeRelabelConfigs:
+          # Add cluster label to all metrics
+          - sourceLabels: [__address__]
+            targetLabel: cluster
+            replacement: another-cluster
+        # Optional: Queue configuration
+        queueConfig:
+          capacity: 10000
+          maxShards: 10
+          minShards: 1
+          maxSamplesPerSend: 1000
+          batchSendDeadline: 5s
+          minBackoff: 30ms
+          maxBackoff: 100ms
+    
+    # Scrape configuration
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+    
+    # External labels (added to all metrics)
+    externalLabels:
+      cluster: another-cluster
+      region: asia-southeast
+      environment: production
+
+# Disable components we don't need in agent mode
+alertmanager:
+  enabled: false
+
+grafana:
+  enabled: false
+
+# Keep these for local scraping
+nodeExporter:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true
+
+# Prometheus Operator
+prometheusOperator:
+  enabled: true

@@ -1,0 +1,23 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pushgateway-prometheus-pushgateway
+  namespace: airflow-3
+  labels:
+    app.kubernetes.io/name: prometheus-pushgateway
+    app.kubernetes.io/instance: pushgateway
+    release: kube-prometheus-stack  # CRITICAL: This label is required for Prometheus to discover it
+spec:
+  # Select the Pushgateway service
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus-pushgateway
+      app.kubernetes.io/instance: pushgateway
+  
+  # Define how to scrape
+  endpoints:
+  - port: http  # Port name from service
+    path: /metrics
+    interval: 15s
+    scrapeTimeout: 10s
+    scheme: http
