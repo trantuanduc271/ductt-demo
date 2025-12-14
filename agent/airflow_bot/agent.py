@@ -23,6 +23,7 @@ SYSTEM_INSTRUCTION = (
     "politely state that you can only assist with Apache Airflow operations."
 )
 
+# This agent can be used standalone or as a sub-agent in a multi-agent system
 root_agent = Agent(
     model="gemini-2.0-flash-exp",
     name="airflow_assistant",
