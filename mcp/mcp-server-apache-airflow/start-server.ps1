@@ -15,8 +15,8 @@ Write-Host "  AIRFLOW_HOST: $env:AIRFLOW_HOST"
 Write-Host "  AIRFLOW_USERNAME: $env:AIRFLOW_USERNAME"
 Write-Host "  AIRFLOW_PASSWORD: ****`n"
 
-Write-Host "Starting MCP server on http://0.0.0.0:8080/mcp" -ForegroundColor Green
+Write-Host "Starting MCP server on http://0.0.0.0:8081/mcp" -ForegroundColor Green
 Write-Host "Press Ctrl+C to stop`n" -ForegroundColor Yellow
 
 # Start the server
-uv run python -m src.main --transport http --mcp-host 0.0.0.0 --mcp-port 8080
+uv run mcp-server-apache-airflow --transport http --mcp-host 0.0.0.0 --mcp-port 8081
