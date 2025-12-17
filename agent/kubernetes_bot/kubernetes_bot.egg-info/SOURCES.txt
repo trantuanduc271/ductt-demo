@@ -1,0 +1,7 @@
+agent.py
+pyproject.toml
+kubernetes_bot.egg-info/PKG-INFO
+kubernetes_bot.egg-info/SOURCES.txt
+kubernetes_bot.egg-info/dependency_links.txt
+kubernetes_bot.egg-info/requires.txt
+kubernetes_bot.egg-info/top_level.txt

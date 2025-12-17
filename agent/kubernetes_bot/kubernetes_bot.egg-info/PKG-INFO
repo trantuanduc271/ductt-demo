@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: kubernetes-bot
+Version: 0.1.0
+Summary: Kubernetes management agent using ADK
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: google-adk[a2a]>=1.13.0
+Requires-Dist: google-genai>=1.17.0
+Requires-Dist: python-dotenv>=1.1.0
+Requires-Dist: kubernetes>=29.0.0
+Requires-Dist: uvicorn>=0.34.2
+Requires-Dist: starlette>=0.46.2
+Requires-Dist: sse-starlette>=2.3.5
