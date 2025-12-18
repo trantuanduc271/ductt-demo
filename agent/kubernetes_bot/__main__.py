@@ -1,7 +1,6 @@
 import uvicorn
 import logging
 from starlette.middleware.cors import CORSMiddleware
-from agent import a2a_app
 
 # Configure logging
 logging.basicConfig(
@@ -9,6 +8,8 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+from agent import a2a_app
 
 if __name__ == '__main__':
     # Add CORS middleware to the app

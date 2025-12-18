@@ -1,6 +1,8 @@
 import os
+import logging
 from pathlib import Path
 from dotenv import load_dotenv
+from google.genai import types
 from google.adk.agents import Agent
 from google.adk.tools.mcp_tool import MCPToolset, StreamableHTTPConnectionParams
 from google.adk.a2a.utils.agent_to_a2a import to_a2a
@@ -9,16 +11,29 @@ from google.adk.a2a.utils.agent_to_a2a import to_a2a
 env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(env_path)
 
+logger = logging.getLogger(__name__)
+
 SYSTEM_INSTRUCTION = (
     "You are a Kubernetes cluster management assistant with direct access to a Kubernetes cluster via MCP tools. "
-    "You have all necessary credentials and configuration already loaded. "
-    "Use your tools confidently to answer user questions. You can help with:\n"
+    "You have all necessary credentials and configuration already loaded and must rely on your tools for any "
+    "cluster information or actions instead of guessing.\n\n"
+    "Your goals are: (1) be reliable and consistent between runs, (2) be safe with cluster-changing actions, and "
+    "(3) explain what you are doing in a clear, structured way.\n\n"
+    "You can help with:\n"
     "- Listing and managing namespaces, nodes, pods, deployments, services, and other Kubernetes resources\n"
     "- Viewing pod logs and events\n"
     "- Checking resource status and details\n"
-    "- Creating, updating, and deleting Kubernetes resources\n"
+    "- Creating, updating, and deleting Kubernetes resources (but confirm destructive actions with the user first)\n"
     "- Executing commands in pods\n"
     "- Managing Helm releases\n\n"
+    "IMPORTANT behavior rules for consistency:\n"
+    "- Always follow this answer structure:\n"
+    "  1. Short summary of the user's request\n"
+    "  2. Plan: bullet list of the steps you will take\n"
+    "  3. Execution: tool calls and results, explained in natural language\n"
+    "  4. Final answer: clear recommendation or outcome\n"
+    "- Always use MCP tools to inspect the cluster before giving a final answer.\n"
+    "- If information is missing or ambiguous, explicitly say what is missing instead of inventing details.\n\n"
     "IMPORTANT for finding pods related to Airflow DAG runs:\n"
     "- When asked to find a pod for a specific DAG run, be PROACTIVE:\n"
     "  1. List pods in the namespace (e.g., airflow-3) and filter by:\n"
@@ -29,16 +44,71 @@ SYSTEM_INSTRUCTION = (
     "  3. Then immediately get the pod logs and events for that pod\n"
     "- DO NOT ask for more information if you have the namespace and DAG run time - just proceed\n"
     "- Airflow pods typically have labels like 'dag_id=<dag_name>'\n\n"
-    "Always provide clear, well-formatted responses in Markdown. "
-    "When showing resource details, organize information logically with headers and tables where appropriate."
+    "Formatting rules:\n"
+    "- Always provide clear, well-formatted responses in Markdown.\n"
+    "- Use headings for major sections (Summary, Plan, Execution, Result).\n"
+    "- When showing resource details, organize information logically with tables or bullet lists."
 )
 
-# This agent can be used standalone or as a sub-agent in a multi-agent system
+# Allow overriding the model via environment; default to a higher-quality Pro model for better reasoning
+model_name = os.getenv("K8S_AGENT_MODEL", "gemini-2.5-pro")
+
+# Generation settings (controls consistency):
+# - Set K8S_AGENT_TEMPERATURE=0 for the most deterministic output.
+# - Optionally tune TOP_P / TOP_K / MAX_OUTPUT_TOKENS.
+def _env_float(name: str, default: float) -> float:
+    value = os.getenv(name)
+    if value is None or value == "":
+        return default
+    return float(value)
+
+
+def _env_int(name: str, default: int | None) -> int | None:
+    value = os.getenv(name)
+    if value is None or value == "":
+        return default
+    return int(value)
+
+
+generate_content_config = types.GenerateContentConfig(
+    temperature=_env_float("K8S_AGENT_TEMPERATURE", 0.0),
+    top_p=_env_float("K8S_AGENT_TOP_P", 0.95),
+    top_k=_env_int("K8S_AGENT_TOP_K", None),
+    max_output_tokens=_env_int("K8S_AGENT_MAX_OUTPUT_TOKENS", None),
+)
+
+# Log effective generation config at startup so it's easy to verify via server logs.
+logger.info(
+    "Kubernetes agent generation config: model=%s temperature=%s top_p=%s top_k=%s max_output_tokens=%s",
+    model_name,
+    generate_content_config.temperature,
+    generate_content_config.top_p,
+    generate_content_config.top_k,
+    generate_content_config.max_output_tokens,
+)
+
+# Also log effective generation config at the start of each turn (useful for multi-turn debugging).
+# In some ADK versions, CallbackContext doesn't expose `agent`, so log from our known config.
+async def _log_generation_config(callback_context):
+    try:
+        payload = (
+            generate_content_config.model_dump()
+            if hasattr(generate_content_config, "model_dump")
+            else generate_content_config
+        )
+        logger.info("kubernetes_bot turn generate_content_config=%s", payload)
+    except Exception:
+        logger.exception("Failed to log kubernetes_bot generate_content_config")
+    return None
+
+# This agent can be used standalone or as a sub-agent in a multi-agent system.
 root_agent = Agent(
-    model="gemini-2.0-flash",
+    model=model_name,
     name="kubernetes_assistant",
     description="An assistant that can help you with your Kubernetes cluster",
     instruction=SYSTEM_INSTRUCTION,
+    generate_content_config=generate_content_config,
+    before_agent_callback=_log_generation_config,
     tools=[
         MCPToolset(
             connection_params=StreamableHTTPConnectionParams(
@@ -48,4 +118,4 @@ root_agent = Agent(
     ],
 )
 
-a2a_app = to_a2a(root_agent, port=9996, host="host.docker.internal")
+a2a_app = to_a2a(root_agent, port=9996, host="localhost")

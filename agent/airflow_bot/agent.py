@@ -1,6 +1,8 @@
 import os
+import logging
 from pathlib import Path
 from dotenv import load_dotenv
+from google.genai import types
 from google.adk.agents import Agent
 from google.adk.tools.mcp_tool import MCPToolset, StreamableHTTPConnectionParams
 from google.adk.a2a.utils.agent_to_a2a import to_a2a
@@ -8,6 +10,8 @@ from google.adk.a2a.utils.agent_to_a2a import to_a2a
 # Load .env from parent directory (agent/.env)
 env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(env_path)
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_INSTRUCTION = (
     "You are a specialized Apache Airflow assistant with access to the Airflow REST API via MCP tools. "
@@ -36,12 +40,64 @@ SYSTEM_INSTRUCTION = (
     "- Format responses clearly in Markdown with tables where appropriate"
 )
 
+# Allow overriding the model via environment; default to a higher-quality Pro model for better reasoning
+model_name = os.getenv("AIRFLOW_AGENT_MODEL", "gemini-2.5-pro")
+
+# Generation settings (controls consistency):
+# - Set AIRFLOW_AGENT_TEMPERATURE=0 for the most deterministic output.
+# - Optionally tune TOP_P / TOP_K / MAX_OUTPUT_TOKENS.
+def _env_float(name: str, default: float) -> float:
+    value = os.getenv(name)
+    if value is None or value == "":
+        return default
+    return float(value)
+
+
+def _env_int(name: str, default: int | None) -> int | None:
+    value = os.getenv(name)
+    if value is None or value == "":
+        return default
+    return int(value)
+
+
+generate_content_config = types.GenerateContentConfig(
+    temperature=_env_float("AIRFLOW_AGENT_TEMPERATURE", 0.0),
+    top_p=_env_float("AIRFLOW_AGENT_TOP_P", 0.95),
+    top_k=_env_int("AIRFLOW_AGENT_TOP_K", None),
+    max_output_tokens=_env_int("AIRFLOW_AGENT_MAX_OUTPUT_TOKENS", None),
+)
+
+# Log effective generation config at startup so it's easy to verify via server logs.
+logger.info(
+    "Airflow agent generation config: model=%s temperature=%s top_p=%s top_k=%s max_output_tokens=%s",
+    model_name,
+    generate_content_config.temperature,
+    generate_content_config.top_p,
+    generate_content_config.top_k,
+    generate_content_config.max_output_tokens,
+)
+
+# Also log effective generation config at the start of each turn (useful for multi-turn debugging).
+async def _log_generation_config(callback_context):
+    try:
+        payload = (
+            generate_content_config.model_dump()
+            if hasattr(generate_content_config, "model_dump")
+            else generate_content_config
+        )
+        logger.info("airflow_bot turn generate_content_config=%s", payload)
+    except Exception:
+        logger.exception("Failed to log airflow_bot generate_content_config")
+    return None
+
 # This agent can be used standalone or as a sub-agent in a multi-agent system
 root_agent = Agent(
-    model="gemini-2.0-flash",
+    model=model_name,
     name="airflow_assistant",
     description="An assistant that can help manage Apache Airflow workflows and operations",
     instruction=SYSTEM_INSTRUCTION,
+    generate_content_config=generate_content_config,
+    before_agent_callback=_log_generation_config,
     tools=[
         MCPToolset(
             connection_params=StreamableHTTPConnectionParams(
@@ -51,5 +107,5 @@ root_agent = Agent(
     ],
 )
 
-a2a_app = to_a2a(root_agent, port=9997, host="host.docker.internal")
+a2a_app = to_a2a(root_agent, port=9997, host="localhost")
 
