@@ -1,0 +1,114 @@
+[
+    {
+      "user_id": "u-001",
+      "name": "Alice Nguyen",
+      "department": "HR",
+      "region": "EU",
+      "overall_status": "NON_COMPLIANT",
+      "last_evaluated": "2025-12-19",
+      "training_status": [
+        {
+          "module_id": "TRN-001",
+          "title": "Annual Security Awareness",
+          "required": true,
+          "status": "OVERDUE",
+          "last_completed": "2024-10-01",
+          "days_overdue": 79,
+          "linked_document": "POL-SEC-001"
+        },
+        {
+          "module_id": "TRN-010",
+          "title": "GDPR for HR (EU)",
+          "required": true,
+          "status": "OVERDUE",
+          "last_completed": "2024-06-10",
+          "days_overdue": 192,
+          "linked_document": "HR-HB-001"
+        }
+      ]
+    },
+    {
+      "user_id": "u-002",
+      "name": "Bob Tran",
+      "department": "Engineering",
+      "region": "US",
+      "overall_status": "NON_COMPLIANT",
+      "last_evaluated": "2025-12-19",
+      "training_status": [
+        {
+          "module_id": "TRN-001",
+          "title": "Annual Security Awareness",
+          "required": true,
+          "status": "COMPLIANT",
+          "last_completed": "2025-01-15",
+          "days_overdue": 0,
+          "linked_document": "POL-SEC-001"
+        },
+        {
+          "module_id": "TRN-030",
+          "title": "AI Governance & Ethics",
+          "required": true,
+          "status": "OVERDUE",
+          "last_completed": "2024-09-20",
+          "days_overdue": 90,
+          "linked_document": "POL-AI-001"
+        }
+      ]
+    },
+    {
+      "user_id": "u-003",
+      "name": "Carol Pham",
+      "department": "Finance",
+      "region": "US",
+      "overall_status": "NON_COMPLIANT",
+      "last_evaluated": "2025-12-19",
+      "training_status": [
+        {
+          "module_id": "TRN-001",
+          "title": "Annual Security Awareness",
+          "required": true,
+          "status": "NOT_STARTED",
+          "last_completed": null,
+          "days_overdue": 365,
+          "linked_document": "POL-SEC-001"
+        },
+        {
+          "module_id": "TRN-020",
+          "title": "PCI Basics for Finance",
+          "required": true,
+          "status": "NOT_STARTED",
+          "last_completed": null,
+          "days_overdue": 365,
+          "linked_document": "POL-SEC-001"
+        }
+      ]
+    },
+    {
+      "user_id": "u-004",
+      "name": "Dave Le",
+      "department": "HR",
+      "region": "EU",
+      "overall_status": "NON_COMPLIANT",
+      "last_evaluated": "2025-12-19",
+      "training_status": [
+        {
+          "module_id": "TRN-001",
+          "title": "Annual Security Awareness",
+          "required": true,
+          "status": "COMPLIANT",
+          "last_completed": "2025-02-01",
+          "days_overdue": 0,
+          "linked_document": "POL-SEC-001"
+        },
+        {
+          "module_id": "TRN-010",
+          "title": "GDPR for HR (EU)",
+          "required": true,
+          "status": "OVERDUE",
+          "last_completed": "2023-11-20",
+          "days_overdue": 394,
+          "linked_document": "HR-HB-001"
+        }
+      ]
+    }
+  ]

@@ -1,0 +1,58 @@
+📄 Information Security Policy
+Document Metadata
+Security classification: Internal
+Document code: POL-SEC-001
+Last updated by: Chief Information Security Officer (CISO)
+Effective date: 2025-01-01
+Version: 1.0
+Review Cycle: Annual
+Applies to: All employees, contractors, consultants, and third parties
+Template ID: TMP-POL-SEC-STD
+1. Purpose
+The purpose of this Information Security Policy is to define the organization’s commitment and approach to protecting the confidentiality, integrity, and availability of information assets.
+This policy establishes a framework for managing information security risks in alignment with recognized international standards and regulatory obligations.
+2. Scope
+This policy applies to:
+All information assets created, processed, stored, or transmitted by the organization
+All systems, networks, applications, and infrastructure, whether on-premises or cloud-based
+All personnel, including employees, contractors, temporary staff, and third-party users
+3. Policy Statement
+The organization shall maintain an Information Security Management System (ISMS) to systematically identify, assess, and manage information security risks.
+Information security controls shall be designed to:
+Protect sensitive and confidential information from unauthorized access or disclosure
+Ensure data accuracy and integrity
+Maintain system availability in line with business requirements
+4. Governance and Responsibilities
+4.1 Executive Management
+Endorse and support the Information Security Policy
+Ensure adequate resources are allocated to information security
+4.2 Chief Information Security Officer (CISO)
+Own and maintain the ISMS
+Define security policies, standards, and procedures
+Oversee security risk assessments and incident response
+4.3 Employees and Contractors
+Comply with all information security policies and procedures
+Complete mandatory security awareness training
+Report suspected security incidents promptly
+5. Information Security Controls
+5.1 Access Control
+Access to systems and data shall be granted on the principle of least privilege.
+User access rights must be approved by the appropriate data or system owner.
+Access shall be reviewed at least annually and upon role change or termination.
+5.2 Asset Management
+Information assets shall be inventoried and assigned an owner.
+Assets must be classified according to the organization’s data classification scheme.
+5.3 Acceptable Use
+Organizational systems may only be used for authorized business purposes.
+The installation of unauthorized software or tools is prohibited.
+5.4 Incident Management
+All suspected or confirmed security incidents must be reported without delay.
+Security incidents shall be managed according to the Incident Response Procedure.
+5.5 Business Continuity
+Information systems supporting critical business processes shall be included in business continuity and disaster recovery planning.
+6. Awareness and Training
+All personnel must complete annual information security awareness training and acknowledge this policy.
+7. Compliance and Enforcement
+Non-compliance with this policy may result in disciplinary action, up to and including termination of employment or contract.
+8. Review
+This policy shall be reviewed annually or following significant changes to business operations, technology, or regulatory requirements.

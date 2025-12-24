@@ -1,0 +1,58 @@
+AI & Automated Decision-Making Policy 
+ 
+Document Metadata 
+Security classification: Internal 
+Document code: POL-AI-001 
+Last updated by: Head of Risk & Compliance 
+Effective date: 2025-02-01 
+Version: 1.0 
+Review Cycle: Annual 
+Applies to: All employees, contractors, and third parties involved in AI design, deployment, 
+or use 
+Template ID: TMP-POL-AI-GOV 
+ 
+1. Purpose 
+This policy defines the organization’s principles and requirements for the responsible, 
+ethical, and secure use of Artificial Intelligence (AI) and automated decision-making 
+systems. 
+ 
+2. Scope 
+This policy applies to: 
+• AI models developed internally or provided by third parties 
+• Automated decision-making systems affecting employees, customers, or partners 
+• All personnel involved in the lifecycle of AI systems 
+ 
+3. Governance Principles 
+3.1 Human Oversight 
+• AI systems must operate under human-in-the-loop (HITL) or human-on-the-loop 
+controls where outcomes may impact individuals. 
+• AI systems must not make final employment or legal decisions without human 
+review.
+
+3.2 Transparency and Explainability 
+• AI-assisted decisions must be explainable to a level appropriate to their risk. 
+• Users must be informed when AI is used in decision-making processes. 
+3.3 Data Protection 
+• Personal data processed by AI systems must comply with applicable privacy laws. 
+• Sensitive or regulated data must not be used unless explicitly authorized. 
+3.4 Risk Management 
+• AI systems shall undergo documented risk assessment prior to deployment. 
+• High-risk AI use cases require senior management approval. 
+ 
+4. Prohibited Uses 
+AI systems must not: 
+• Operate without defined accountability 
+• Generate or modify organizational policies autonomously 
+• Bypass established approval or governance processes 
+ 
+5. Training Requirements 
+Personnel involved in AI development, deployment, or operation must complete annual AI 
+governance and ethics training. 
+ 
+6. Monitoring and Review 
+AI systems shall be monitored for performance, bias, and unintended outcomes 
+throughout their lifecycle. 
+ 
+7. Enforcement 
+Failure to comply with this policy may result in disciplinary action and suspension of AI 
+system use.

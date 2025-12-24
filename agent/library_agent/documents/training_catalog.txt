@@ -1,0 +1,59 @@
+[
+  {
+    "module_id": "TRN-001",
+    "title": "Annual Security Awareness",
+    "mandatory_for": ["All"],
+    "cadence_days": 365,
+    "linked_documents": [
+      {
+        "document_code": "POL-SEC-001",
+        "section": "6",
+        "reason": "Annual security awareness training requirement"
+      }
+    ],
+    "status": "Approved"
+  },
+  {
+    "module_id": "TRN-010",
+    "title": "GDPR for HR (EU)",
+    "mandatory_for": ["HR"],
+    "region": "EU",
+    "cadence_days": 365,
+    "linked_documents": [
+      {
+        "document_code": "HR-HB-001",
+        "section": "4",
+        "reason": "Role-based privacy/compliance training requirement"
+      }
+    ],
+    "status": "Approved"
+  },
+  {
+    "module_id": "TRN-020",
+    "title": "PCI Basics for Finance",
+    "mandatory_for": ["Finance"],
+    "cadence_days": 365,
+    "linked_documents": [
+      {
+        "document_code": "POL-SEC-001",
+        "section": "5",
+        "reason": "Security controls and protection of sensitive information"
+      }
+    ],
+    "status": "Approved"
+  },
+  {
+    "module_id": "TRN-030",
+    "title": "AI Governance & Ethics",
+    "mandatory_for": ["Engineering", "Compliance", "Product"],
+    "cadence_days": 365,
+    "linked_documents": [
+      {
+        "document_code": "POL-AI-001",
+        "section": "5",
+        "reason": "Annual AI governance and ethics training requirement"
+      }
+    ],
+    "status": "Approved"
+  }
+]

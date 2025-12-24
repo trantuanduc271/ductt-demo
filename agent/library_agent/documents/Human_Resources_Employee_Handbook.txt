@@ -1,0 +1,35 @@
+📄 Human Resources Employee Handbook
+Document Metadata
+Security classification: Internal
+Document code: HR-HB-001
+Last updated by: Head of Human Resources
+Effective date: 2025-01-15
+Version: 1.0
+Review Cycle: Annual
+Applies to: All employees
+Template ID: TMP-HR-HANDBOOK
+1. Introduction
+This handbook outlines the organization’s policies, expectations, and employment practices to promote a professional, respectful, and compliant workplace.
+2. Employment Practices
+2.1 Equal Employment Opportunity
+The organization provides equal employment opportunities without discrimination based on legally protected characteristics.
+2.2 Code of Conduct
+Employees are expected to:
+Act ethically and professionally
+Comply with all organizational policies
+Protect confidential information
+3. Confidentiality and Data Protection
+Employees must safeguard company and personal data in accordance with:
+Information Security Policy
+Privacy and data protection requirements
+4. Mandatory Training
+Employees are required to complete:
+Annual Security Awareness Training
+Role-based Privacy or Compliance Training
+Additional training as required by job function or regulation
+5. Disciplinary Process
+Failure to comply with organizational policies may result in corrective action, up to and including termination of employment.
+6. Acknowledgement
+Employees must acknowledge receipt and understanding of this handbook.
+7. Review
+This handbook shall be reviewed annually and updated as necessary.

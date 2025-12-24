@@ -1,0 +1,3 @@
+# Library Agent Dependencies
+chromadb>=0.4.0
+

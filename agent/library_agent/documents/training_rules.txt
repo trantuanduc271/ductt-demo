@@ -1,0 +1,34 @@
+{
+  "default_cadence_days": 365,
+  "rules": [
+    {
+      "rule_id": "RULE-SEC-ALL",
+      "condition": {
+        "mandatory_for": "All"
+      },
+      "assign_module": "TRN-001"
+    },
+    {
+      "rule_id": "RULE-GDPR-HR-EU",
+      "condition": {
+        "department": "HR",
+        "region": "EU"
+      },
+      "assign_module": "TRN-010"
+    },
+    {
+      "rule_id": "RULE-PCI-FIN",
+      "condition": {
+        "department": "Finance"
+      },
+      "assign_module": "TRN-020"
+    },
+    {
+      "rule_id": "RULE-AI-GOV",
+      "condition": {
+        "department_in": ["Engineering", "Compliance", "Product"]
+      },
+      "assign_module": "TRN-030"
+    }
+  ]
+}

@@ -73,11 +73,34 @@ async def request_user_approval(
 
 
 ROOT_SYSTEM_INSTRUCTION = (
-    "You are a DevOps orchestrator that coordinates between Airflow and Kubernetes systems.\n\n"
+    "You are a DevOps orchestrator that coordinates between Airflow, Kubernetes, and Security Training systems.\n\n"
     "AVAILABLE TOOLS:\n"
     "1. airflow_assistant - Manages Apache Airflow DAGs, runs, tasks, and logs\n"
     "2. kubernetes_assistant - Manages Kubernetes pods, deployments, services, logs, and events\n"
-    "3. request_user_approval - Request human approval for destructive or sensitive operations\n\n"
+    "3. awareness_agent - Awareness/Training agent (Agent 1) for security and compliance:\n"
+    "   - Detects training gaps and overdue assignments\n"
+    "   - Plans training assignments with policy citations\n"
+    "   - Imports user awareness status from JSON data\n"
+    "   - Requests HITL approval for training assignments\n"
+    "   - Can delegate to security_training_library for policy lookups\n"
+    "4. security_training_library - Library/Knowledge agent (Agent 2) for policy and training content:\n"
+    "   - Searches policy documents using semantic similarity (vector DB)\n"
+    "   - Loads training catalog and assignment rules\n"
+    "   - Retrieves policy text content with citations\n"
+    "   - Answers questions like 'List all mandatory training' or 'Summary AI policy'\n"
+    "5. request_user_approval - Request human approval for destructive or sensitive operations\n\n"
+    "SECURITY TRAINING WORKFLOW:\n"
+    "For security training queries, you can use either agent:\n"
+    "- Use awareness_agent for: gap detection, assignment planning, approvals, data import\n"
+    "- Use security_training_library for: policy queries, training catalog lookups, document searches\n"
+    "- The awareness agent can also call the library internally, but you can call both directly for visibility\n\n"
+    "JSON DATA IMPORT:\n"
+    "When a user pastes or provides JSON data (e.g., user awareness status JSON):\n"
+    "1. Extract the JSON content from the user's message\n"
+    "2. Call security_training_orchestrator's import_user_awareness_from_upload tool\n"
+    "3. Pass the JSON content as a string to the json_content parameter\n"
+    "4. The tool will import the data into the PostgreSQL database\n"
+    "Example: User pastes JSON → Call security_training_orchestrator.import_user_awareness_from_upload(json_content=<pasted_json_string>)\n\n"
     "APPROVAL WORKFLOW:\n"
     "For DESTRUCTIVE or SENSITIVE operations, you MUST request approval BEFORE executing:\n\n"
     "Operations requiring APPROVAL:\n"
@@ -147,6 +170,8 @@ ROOT_SYSTEM_INSTRUCTION = (
 
 airflow_base = os.getenv("AIRFLOW_A2A_BASE_URL", "http://localhost:9997")
 k8s_base = os.getenv("K8S_A2A_BASE_URL", "http://localhost:9996")
+awareness_base = os.getenv("AWARENESS_AGENT_BASE_URL", "http://localhost:9998")
+library_base = os.getenv("LIBRARY_AGENT_BASE_URL", "http://localhost:9999")
 
 airflow_remote_agent = RemoteA2aAgent(
     name="airflow_assistant",
@@ -168,8 +193,28 @@ k8s_remote_agent = RemoteA2aAgent(
     agent_card=f"{k8s_base}{AGENT_CARD_WELL_KNOWN_PATH}",
 )
 
+awareness_remote_agent = RemoteA2aAgent(
+    name="awareness_agent",
+    description=(
+        "Awareness/Training agent (Agent 1) for security and compliance. "
+        "Use for: awareness gap detection, training assignment planning, policy citations, HITL approvals, "
+        "and importing user awareness status from JSON data into the database."
+    ),
+    agent_card=f"{awareness_base}{AGENT_CARD_WELL_KNOWN_PATH}",
+)
 
-root_model_name = os.getenv("ROOT_AGENT_MODEL", "gemini-2.0-flash-exp")
+library_remote_agent = RemoteA2aAgent(
+    name="security_training_library",
+    description=(
+        "Library/Knowledge agent (Agent 2) for policy and training content. "
+        "Use for: semantic policy searches, training catalog lookups, document retrieval, "
+        "answering questions like 'List all mandatory training' or 'Summary AI policy'."
+    ),
+    agent_card=f"{library_base}{AGENT_CARD_WELL_KNOWN_PATH}",
+)
+
+
+root_model_name = os.getenv("ROOT_AGENT_MODEL", "gemini-3-pro-preview")
 
 generate_content_config = types.GenerateContentConfig(
     temperature=_env_float("ROOT_AGENT_TEMPERATURE", 0.0),
@@ -237,8 +282,10 @@ root_agent = Agent(
     before_agent_callback=_log_generation_config,
     after_agent_callback=_log_agent_response,
     tools=[
-        FunctionTool(request_user_approval),  # Add approval tool FIRST
+        FunctionTool(request_user_approval),
         AgentTool(airflow_remote_agent),
         AgentTool(k8s_remote_agent),
+        AgentTool(awareness_remote_agent),
+        AgentTool(library_remote_agent),
     ],
 )
