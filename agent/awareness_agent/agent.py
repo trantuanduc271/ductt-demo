@@ -16,12 +16,12 @@ from google.adk.agents.remote_a2a_agent import (
 )
 from google.adk.a2a.utils.agent_to_a2a import to_a2a
 
-# Import database utilities (local to this folder)
 from db_utils import (
     import_user_awareness_from_json,
     import_user_awareness_from_json_content,
     load_user_awareness_status_from_db,
     save_training_assignments_to_db,
+    delete_user_from_db,
 )
 
 
@@ -146,6 +146,32 @@ def save_training_assignments(
     )
 
 
+def delete_user(user_id: str) -> dict:
+    """Delete a user and all associated records from the database.
+    
+    This will permanently remove:
+    - The user record
+    - All training status records for the user
+    - All training assignments for the user
+    - All audit log entries for the user
+    
+    Use this when a user has left the organization or needs to be removed from the system.
+    
+    Args:
+        user_id: The user_id of the user to delete (e.g., "u-001", "u-007")
+    
+    Returns:
+        Dictionary with success status and deletion details:
+        - success: bool
+        - user_id: The deleted user_id
+        - user_name: The name of the deleted user
+        - deleted_records: Dict with counts of deleted records
+        - error: Error message if deletion failed
+    """
+    logger.info("Deleting user %s from database", user_id)
+    return delete_user_from_db(user_id)
+
+
 # =============================================================================
 # HITL Tool - approval for training assignments / document updates
 # =============================================================================
@@ -207,7 +233,9 @@ AWARENESS_SYSTEM_INSTRUCTION = (
     "- The data structure includes: user_id, name, department, region, overall_status, "
     "last_evaluated, and training_status array with module details.\n"
     "- After approval, use save_training_assignments() to persist new assignments to the database "
-    "(this also creates audit log entries for compliance).\n\n"
+    "(this also creates audit log entries for compliance).\n"
+    "- To remove a user from the system (e.g., when they leave the organization), use delete_user(user_id). "
+    "This will permanently delete the user and all associated training records, assignments, and audit logs.\n\n"
     "STEP 1 – Awareness Agent detects gaps:\n"
     "- Compute which users are overdue or missing, following this pattern:\n"
     "    - Alice: Security Awareness overdue (2024-10-01 + 12m = 2025-10-01) → overdue on 2025-12-19\n"
@@ -306,6 +334,7 @@ awareness_agent = Agent(
         FunctionTool(import_user_awareness_from_upload),
         FunctionTool(load_user_awareness_status),
         FunctionTool(save_training_assignments),
+        FunctionTool(delete_user),
         AgentTool(library_remote_agent),
         FunctionTool(request_assignment_approval),
     ],

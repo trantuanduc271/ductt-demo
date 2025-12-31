@@ -552,3 +552,77 @@ def save_training_assignments_to_db(
     finally:
         return_db_connection(conn)
 
+
+def delete_user_from_db(user_id: str) -> dict:
+    """Delete a user and all associated records from the database.
+    
+    This will delete:
+    - The user record from the users table
+    - All training status records (via CASCADE)
+    - All training assignments (via CASCADE)
+    - All audit log entries for this user
+    
+    Args:
+        user_id: The user_id of the user to delete
+        
+    Returns:
+        Dictionary with success status and deletion details.
+    """
+    logger.info("Deleting user %s from database", user_id)
+    
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            # First, check if user exists
+            cur.execute("SELECT user_id, name FROM users WHERE user_id = %s", (user_id,))
+            user_record = cur.fetchone()
+            
+            if not user_record:
+                return {
+                    "success": False,
+                    "error": f"User {user_id} not found in database",
+                }
+            
+            user_name = user_record[1]
+            
+            # Count related records before deletion (for reporting)
+            cur.execute("SELECT COUNT(*) FROM user_training_status WHERE user_id = %s", (user_id,))
+            training_status_count = cur.fetchone()[0]
+            
+            cur.execute("SELECT COUNT(*) FROM training_assignments WHERE user_id = %s", (user_id,))
+            assignments_count = cur.fetchone()[0]
+            
+            cur.execute("SELECT COUNT(*) FROM audit_log WHERE user_id = %s", (user_id,))
+            audit_log_count = cur.fetchone()[0]
+            
+            # Delete audit log entries (no CASCADE, so manual deletion)
+            cur.execute("DELETE FROM audit_log WHERE user_id = %s", (user_id,))
+            
+            # Delete user (this will CASCADE to user_training_status and training_assignments)
+            cur.execute("DELETE FROM users WHERE user_id = %s", (user_id,))
+            
+            conn.commit()
+            
+            logger.info(
+                "Deleted user %s (%s): %d training status records, %d assignments, %d audit log entries",
+                user_id, user_name, training_status_count, assignments_count, audit_log_count
+            )
+            
+            return {
+                "success": True,
+                "user_id": user_id,
+                "user_name": user_name,
+                "deleted_records": {
+                    "training_status": training_status_count,
+                    "assignments": assignments_count,
+                    "audit_log": audit_log_count,
+                },
+            }
+            
+    except Exception as e:
+        conn.rollback()
+        logger.exception("Failed to delete user %s: %s", user_id, e)
+        return {"success": False, "error": str(e)}
+    finally:
+        return_db_connection(conn)
+
