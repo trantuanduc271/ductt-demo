@@ -250,3 +250,4 @@ if __name__ == "__main__":
     elif args.list:
         view_all_documents()
 
+
